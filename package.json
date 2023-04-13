@@ -1,0 +1,42 @@
+{
+  "scripts": {
+    "start": "npx prisma db push --accept-data-loss && cross-env NODE_ENV=production node index.js",
+    "dev": "npx prisma migrate dev && cross-env NODE_ENV=development nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@prisma/client": "^4.12.0",
+    "argon2": "^0.30.3",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "express-validator": "^6.15.0",
+    "helmet": "^6.0.1",
+    "http-errors": "^2.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "moment": "^2.29.4",
+    "moment-timezone": "^0.5.43",
+    "morgan": "^1.10.0",
+    "node-cron": "^3.0.2",
+    "nodemailer": "^6.9.1",
+    "otp-generator": "^4.0.1",
+    "prisma-dbml-generator": "^0.10.0",
+    "qrcode-terminal": "^0.12.0",
+    "serve-favicon": "^2.5.0",
+    "string-crypto": "^2.0.2",
+    "whatsapp-web.js": "^1.19.5",
+    "xss-clean": "^0.1.1"
+  },
+  "name": "otp-project",
+  "version": "1.0.0",
+  "description": "OTP Project purpose",
+  "main": "index.js",
+  "repository": "https://github.com/chlasswg26/otp-project",
+  "author": "Ichlas Wardy Gustama <cahyo4713@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "prisma": "^4.12.0"
+  }
+}

@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
+}
+
+// Schema Client Generator
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator dbml {
+  provider = "prisma-dbml-generator"
+}
+
+model Pin {
+  id Int @id @default(autoincrement()) @unique
+  code String?
+  type PinType?
+  is_used Boolean? @default(false)
+  session_id String @unique @default(cuid())
+  expiry_time_id Int?
+  template_id Int?
+
+  expiry_time ExpiryTime? @relation(fields: [expiry_time_id], references: [id])
+  template MessageTemplate? @relation(fields: [template_id], references: [id])
+
+  @@index([id, expiry_time_id, template_id])
+}
+
+model ExpiryTime {
+  id Int @id @default(autoincrement()) @unique
+  timeout_count String?
+  timeout_format String?
+  timeout_date DateTime? @db.Timestamptz()
+  locale String?
+
+  pins Pin[]
+
+  @@index([id])
+}
+
+model MessageTemplate {
+  id Int @id @default(autoincrement()) @unique
+  message_code String? @default(uuid())
+  message String @db.Text
+
+  pins Pin[]
+
+  @@index([id])
+}
+
+enum PinType {
+  email
+  wa
+  sms
+}
