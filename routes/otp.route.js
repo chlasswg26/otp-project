@@ -10,38 +10,68 @@ const validate = require('../middlewares/validation')
 Route.post(
   "/request",
   validate([
-    check("code")
-      .escape()
-      .trim()
-      .bail()
-      .isString()
-      .withMessage("Verification code must be string/random text"),
     check("type")
       .escape()
       .trim()
       .notEmpty()
-      .withMessage("Verification Code can't be empty")
+      .withMessage("Verification type can't be empty")
       .bail()
       .isIn(["email", "wa", "sms"])
       .withMessage("Invalid OTP verification type"),
+    check("phone")
+      .optional({
+        nullable: true,
+        checkFalsy: true,
+      })
+      .escape()
+      .trim()
+      .notEmpty()
+      .withMessage("Phone number can't be empty")
+      .bail()
+      .isMobilePhone("any")
+      .withMessage("Please enter a valid mobile phone number"),
+    check("email")
+      .optional({
+        nullable: true,
+        checkFalsy: true,
+      })
+      .escape()
+      .trim()
+      .notEmpty()
+      .withMessage("Email address can't be empty")
+      .bail()
+      .isEmail()
+      .withMessage("E-mail bad format"),
   ]),
   requestVerificationControllers
 )
   .post(
     "/resent",
     validate([
-      check("session")
+      check("phone")
+        .optional({
+          nullable: true,
+          checkFalsy: true,
+        })
         .escape()
         .trim()
+        .notEmpty()
+        .withMessage("Phone number can't be empty")
         .bail()
-        .isString()
-        .withMessage("OTP Session must be string"),
-      check("code")
+        .isMobilePhone("any")
+        .withMessage("Please enter a valid mobile phone number"),
+      check("email")
+        .optional({
+          nullable: true,
+          checkFalsy: true,
+        })
         .escape()
         .trim()
+        .notEmpty()
+        .withMessage("Email address can't be empty")
         .bail()
-        .isString()
-        .withMessage("Verification code must be string/random text"),
+        .isEmail()
+        .withMessage("E-mail bad format"),
     ]),
     resentVerificationControllers
   )
@@ -52,10 +82,7 @@ Route.post(
         .escape()
         .trim()
         .notEmpty()
-        .withMessage("Verification Code can't be empty")
-        .bail()
-        .isString()
-        .withMessage("Verification code must be string/random text"),
+        .withMessage("Verification code can't be empty"),
     ]),
     verificationControllers
   );

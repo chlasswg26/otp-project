@@ -1,0 +1,295 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "OTP Project",
+        "version": "1.0.0",
+        "contact": {
+            "name": "Ichlas Wardy Gustama",
+            "email": "ichlaswardy26@gmail.com",
+            "url": "https://chlasswg26.github.io/chlasswg26"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "description": "Documentation for OTP Project API"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8069",
+            "description": "Current Server",
+            "variables": {}
+        },
+        {
+            "url": "http://localhost:6666",
+            "description": "Old Server"
+        }
+    ],
+    "paths": {
+        "/api/v1/otp/request": {
+            "post": {
+                "tags": [
+                    "Default: OTP"
+                ],
+                "summary": "Request",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string",
+                                        "description": "Required (wa, email) WhatsApp / E-Mail",
+                                        "example": "wa"
+                                    },
+                                    "phone": {
+                                        "type": "integer",
+                                        "description": "Required (if possible) Phone Number",
+                                        "example": "6281511927645"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "description": "Required (if possible) E-Mail Address",
+                                        "example": "cahyo4713@gmail.com"
+                                    },
+                                    "timeout": {
+                                        "type": "integer",
+                                        "description": "Optional, Duration of expire (numeric) default is 1",
+                                        "example": "5"
+                                    },
+                                    "format": {
+                                        "type": "string",
+                                        "description": "Optional, Format of duration timeout (s,m,h,d) default is m",
+                                        "example": "m"
+                                    },
+                                    "locale": {
+                                        "type": "string",
+                                        "description": "Optional, language of detail expiration (country code e.g 'en') default is english",
+                                        "example": "id"
+                                    },
+                                    "template": {
+                                        "type": "integer",
+                                        "description": "Optional, message template (on progress)",
+                                        "example": "1945"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "examples": {
+                                    "example-0": {
+                                        "summary": "Success: WhatsApp",
+                                        "value": {
+                                            "meta": {
+                                                "code": 201,
+                                                "status": "success",
+                                                "message": "OTP Created"
+                                            },
+                                            "data": {
+                                                "type": "wa",
+                                                "detail": {
+                                                    "date_of_expire": "2023-04-19T02:16:00.000Z",
+                                                    "duration_of_expire": "a minute"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "example-1": {
+                                        "summary": "Success: Email",
+                                        "value": {
+                                            "meta": {
+                                                "code": 201,
+                                                "status": "success",
+                                                "message": "OTP Created"
+                                            },
+                                            "data": {
+                                                "type": "email",
+                                                "detail": {
+                                                    "date_of_expire": "2023-04-19T02:24:17.000Z",
+                                                    "duration_of_expire": "a minute"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "example": {
+                                    "code": 400,
+                                    "status": false,
+                                    "message": {
+                                        "value": "facebook",
+                                        "msg": "Invalid OTP verification type",
+                                        "param": "type",
+                                        "location": "body"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": []
+            }
+        },
+        "/api/v1/otp/resent": {
+            "post": {
+                "tags": [
+                    "Default: OTP"
+                ],
+                "summary": "Resent",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "description": "Required (if possible) E-Mail Address",
+                                        "example": "demo@mail.com"
+                                    },
+                                    "phone": {
+                                        "type": "integer",
+                                        "description": "Required (if possible) Phone Number",
+                                        "example": "6281511927645"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "example": {
+                                    "meta": {
+                                        "code": 201,
+                                        "status": "success",
+                                        "message": "OTP has been resent"
+                                    },
+                                    "data": {
+                                        "type": "wa",
+                                        "detail": {
+                                            "date_of_expire": "2023-04-20T02:26:08.000Z",
+                                            "duration_of_expire": "a minute"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "example": {
+                                    "code": 501,
+                                    "status": false,
+                                    "message": "Request session not found/expired, please request OTP"
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": []
+            }
+        },
+        "/api/v1/otp/verify": {
+            "post": {
+                "tags": [
+                    "Default: OTP"
+                ],
+                "summary": "Verify",
+                "requestBody": {
+                    "content": {
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "code": {
+                                        "type": "integer",
+                                        "example": "902140"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "example": {
+                                    "meta": {
+                                        "code": 202,
+                                        "status": "success",
+                                        "message": "OTP Verified"
+                                    },
+                                    "data": {
+                                        "message": "OTP Verification success"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "example": {
+                                    "code": 501,
+                                    "status": false,
+                                    "message": "Request session not found/expired, please request OTP"
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": []
+            }
+        }
+    },
+    "externalDocs": {
+        "description": "Postman Docs",
+        "url": "https://documenter.getpostman.com/view/26213517/2s93eR4FWJ"
+    },
+    "components": {
+        "links": {},
+        "callbacks": {},
+        "schemas": {}
+    },
+    "tags": []
+}

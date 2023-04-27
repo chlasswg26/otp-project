@@ -6,3 +6,4 @@ prisma/*
 yarn.lock
 package-lock.json
 .wwebjs_auth
+yarn-error.log

@@ -1,11 +1,25 @@
-module.exports = (response, status, data, pagination) => {
+module.exports = (response, status, message, data) => {
   const result = {}
-  result.status = status || 200
-  result.data = data
+  const isExecutionSuccess = status === 200 || status === 201 || status === 202
 
-  if (pagination) result.pagination = pagination
+  if (isExecutionSuccess) {
+    result.meta = {
+      code: status,
+    };
+    result.meta = {
+      ...result.meta,
+      status: "success",
+    };
+    result.meta = {
+      ...result.meta,
+      message: message || "Something went wrong",
+    };
+    result.data = data;
+  } else {
+    result.code = status;
+    result.status = false;
+    result.message = message || "Something went wrong";
+  }
 
-  return response
-    .status(result.status)
-    .json(result)
+  return response.status(status).json(result);
 }

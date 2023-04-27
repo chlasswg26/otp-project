@@ -1,56 +1,37 @@
 const response = require("../helpers/response");
 const createErrors = require("http-errors");
 require("dotenv").config();
-const { NODE_ENV, SERVER_TIMEZONE } = process.env;
+const { NODE_ENV, SERVER_TIMEZONE, TIMEOUT_DURATION } = process.env;
 const sendMail = require("../helpers/mailer");
 const registrationEmailTemplate = require("../templates/registration.template");
 const prisma = require("../config/prisma");
-const otpGenerator = require("otp-generator");
-const { Client, LocalAuth } = require("whatsapp-web.js");
-const qrcode = require("qrcode-terminal");
 const moment = require("moment");
 require("moment-timezone");
-
-const client = new Client({
-  authStrategy: new LocalAuth({
-    clientId: "client-one",
-  }),
-});
-client.on("qr", (qr) => {
-  qrcode.generate(qr, { small: true });
-});
-client.initialize();
+const Duration = require('duration-js')
+const { random } = require('../helpers/randomize')
+const whatsapp = require('../config/whatsapp')
 
 module.exports = {
   requestVerificationControllers: (req, res) => {
     const main = async () => {
       try {
         const data = req.body;
-        const bodyLength = Object.keys(data).length;
         let result = "";
         const expiryTime = moment
           .tz(SERVER_TIMEZONE)
           .utc()
-          .add(data?.timeout ?? 5, data?.format ?? "minutes")
+          .add(data?.timeout ?? TIMEOUT_DURATION, data?.format ?? "minutes")
           .format("YYYY-MM-DDTHH:mm:ss[Z]");
         const zoneName = moment().locale(data?.locale || "en");
         const durationOfExpireTime = moment
-          .duration(data?.timeout ?? 5, data?.format ?? "minutes")
+          .duration(
+            data?.timeout ?? TIMEOUT_DURATION,
+            data?.format ?? "minutes"
+          )
           .locale(zoneName)
           .humanize(false);
-
-        if (!bodyLength)
-          throw new createErrors.BadRequest("Request body empty");
-
-        if (!data?.code) {
-          const randomCode = otpGenerator.generate(6, {
-            digits: true,
-            upperCaseAlphabets: true,
-            specialChars: false,
-          });
-
-          data.code = randomCode;
-        }
+        let session_id;
+        const generatedOTPCode = random();
 
         if (data?.template) {
           const template = await prisma.messageTemplate.findFirst({
@@ -66,20 +47,21 @@ module.exports = {
         result = await prisma.pin.create({
           data: !data?.template
             ? {
-                code: data.code,
-                type: data?.type,
+                code: generatedOTPCode,
+                type: data.type,
                 expiry_time: {
                   create: {
                     timeout_date: expiryTime,
-                    timeout_count: data?.timeout?.toString() ?? "5",
+                    timeout_count:
+                      data?.timeout?.toString() ?? TIMEOUT_DURATION,
                     timeout_format: data?.format ?? "minutes",
                     locale: data?.locale || "en",
                   },
                 },
               }
             : {
-                code: data.code,
-                type: data?.type,
+                code: generatedOTPCode,
+                type: data.type,
                 template: {
                   connect: {
                     id: data?.template?.id,
@@ -88,7 +70,8 @@ module.exports = {
                 expiry_time: {
                   create: {
                     timeout_date: expiryTime,
-                    timeout_count: data?.timeout?.toString() ?? "5",
+                    timeout_count:
+                      data?.timeout?.toString() ?? TIMEOUT_DURATION,
                     timeout_format: data?.format ?? "minutes",
                     locale: data?.locale || "en",
                   },
@@ -100,6 +83,8 @@ module.exports = {
           },
         });
 
+        session_id = result.session_id
+
         if (!result)
           throw new createErrors.NotImplemented(
             "Request verification code failed"
@@ -110,21 +95,21 @@ module.exports = {
             await sendMail(
               data.email,
               "Verify your account",
-              registrationEmailTemplate(data.code, durationOfExpireTime)
+              registrationEmailTemplate(generatedOTPCode, durationOfExpireTime)
             );
             break;
           case "wa":
-            await client.sendMessage(
+            await whatsapp.sendMessage(
               data.phone.includes("@c.us") ? data.phone : `${data.phone}@c.us`,
               data?.template
                 ? data?.template?.message
-                    ?.replace("{$CODE}", `*${data.code}*`)
+                    ?.replace("{$CODE}", `*${generatedOTPCode}*`)
                     ?.replace("{$TIMEOUT}", `*${durationOfExpireTime}*`)
                 : `This is your verification code, do not give this code to other people except for the web.
 
 
 
-Code: *${data.code}*
+Code: *${generatedOTPCode}*
 
 Expire in *${durationOfExpireTime}*`
             );
@@ -135,24 +120,32 @@ Expire in *${durationOfExpireTime}*`
         }
 
         result = {
-          message: `Verification code sent`,
-          pin: {
-            type: result.type,
-            session: result.session_id,
-            template: result?.template?.message_code,
-            detail: {
-              date_of_expire: result.expiry_time.timeout_date,
-              duration_of_expire: durationOfExpireTime,
-              is_used: result.is_used,
-            },
+          type: result.type,
+          template: result?.template?.message_code,
+          detail: {
+            date_of_expire: result.expiry_time.timeout_date,
+            duration_of_expire: durationOfExpireTime
           },
         };
 
-        return response(res, 202, result);
-      } catch (error) {
-        return response(res, error.status || 500, {
-          message: error.message || error,
+        const maxAgeCookie = new Duration('1h');
+
+        res.cookie("session", session_id, {
+          maxAge: maxAgeCookie,
+          expires: maxAgeCookie + Date.now(),
+          httpOnly: true,
+          sameSite: "strict",
+          secure: NODE_ENV !== "development",
+          signed: true,
         });
+
+        return response(res, 201, "OTP Created", result);
+      } catch (error) {
+        return response(
+          res,
+          error.status || 500,
+          error.message || "Server error"
+        );
       }
     };
 
@@ -169,15 +162,14 @@ Expire in *${durationOfExpireTime}*`
     const main = async () => {
       try {
         const data = req.body;
-        const bodyLength = Object.keys(data).length;
         let result = "";
+        const session = req.signedCookies?.session
 
-        if (!bodyLength)
-          throw new createErrors.BadRequest("Request body empty");
+        if (!session) throw new createErrors.NotImplemented("Request session not found/expired, please request OTP");
 
         const pin = await prisma.pin.findFirst({
           where: {
-            session_id: data?.session,
+            session_id: session,
           },
           include: {
             expiry_time: true,
@@ -186,35 +178,26 @@ Expire in *${durationOfExpireTime}*`
         });
 
         if (!pin)
-          throw new createErrors.NotAcceptable("OTP Session was not found");
+          throw new createErrors.NotAcceptable("Requested OTP was not found");
 
         const expiryTime = moment
           .tz(SERVER_TIMEZONE)
           .utc()
-          .add(pin.expiry_time.timeout_count ?? 5, pin.expiry_time.timeout_format ?? "minutes")
+          .add(pin.expiry_time.timeout_count ?? TIMEOUT_DURATION, pin.expiry_time.timeout_format ?? "minutes")
           .format("YYYY-MM-DDTHH:mm:ss[Z]");
         const zoneName = moment().locale(pin.expiry_time.locale || "en");
         const durationOfExpireTime = moment
-          .duration(pin.expiry_time.timeout_count ?? 5, pin.expiry_time.timeout_format ?? "minutes")
+          .duration(pin.expiry_time.timeout_count ?? TIMEOUT_DURATION, pin.expiry_time.timeout_format ?? "minutes")
           .locale(zoneName)
           .humanize(false);
-
-        if (!data?.code) {
-          const randomCode = otpGenerator.generate(6, {
-            digits: true,
-            upperCaseAlphabets: true,
-            specialChars: false,
-          });
-
-          data.code = randomCode;
-        }
+        const generatedOTPCode = random();
 
         result = await prisma.pin.update({
           where: {
             session_id: pin.session_id,
           },
           data: {
-            code: data.code,
+            code: generatedOTPCode,
             expiry_time: {
               update: {
                 timeout_date: expiryTime,
@@ -237,49 +220,46 @@ Expire in *${durationOfExpireTime}*`
             await sendMail(
               data.email,
               "Verify your account",
-              registrationEmailTemplate(data.code, durationOfExpireTime)
+              registrationEmailTemplate(generatedOTPCode, durationOfExpireTime)
             );
             break;
           case "wa":
-            await client.sendMessage(
+            await whatsapp.sendMessage(
               data.phone?.includes("@c.us") ? data.phone : `${data.phone}@c.us`,
               pin.template_id
                 ? pin.template.message
-                    ?.replace("{$CODE}", `*${data.code}*`)
+                    ?.replace("{$CODE}", `*${generatedOTPCode}*`)
                     ?.replace("{$TIMEOUT}", `*${durationOfExpireTime}*`)
                 : `This is your verification code, do not give this code to other people except for the web.
 
 
 
-Code: *${data.code}*
+Code: *${generatedOTPCode}*
 
 Expire in *${durationOfExpireTime}*`
             );
             break;
 
           default:
-            throw new createErrors.BadRequest("Verificaiton type invalid");
+            throw new createErrors.BadRequest("Verification type invalid");
         }
 
         result = {
-          message: `Verification code resent`,
-          pin: {
-            type: result.type,
-            session: result.session_id,
-            template: result?.template?.message_code,
-            detail: {
-              date_of_expire: result.expiry_time.timeout_date,
-              duration_of_expire: durationOfExpireTime,
-              is_used: result.is_used,
-            },
+          type: result.type,
+          template: result?.template?.message_code,
+          detail: {
+            date_of_expire: result.expiry_time.timeout_date,
+            duration_of_expire: durationOfExpireTime,
           },
         };
 
-        return response(res, 202, result);
+        return response(res, 201, "OTP has been resent", result);
       } catch (error) {
-        return response(res, error.status || 500, {
-          message: error.message || error,
-        });
+        return response(
+          res,
+          error.status || 500,
+          error.message || "Server error"
+        );
       }
     };
 
@@ -296,10 +276,12 @@ Expire in *${durationOfExpireTime}*`
     const main = async () => {
       try {
         const data = req.body;
-        const dataLength = Object.keys(data).length;
+        const session = req.signedCookies?.session;
 
-        if (!dataLength)
-          throw new createErrors.BadRequest("Request parameters empty");
+        if (!session)
+          throw new createErrors.NotImplemented(
+            "Request session not found/expired, please request OTP"
+          );
 
         const pin = await prisma.pin.findFirst({
           where: {
@@ -311,20 +293,21 @@ Expire in *${durationOfExpireTime}*`
               },
               {
                 session_id: {
-                  equals: data.session
-                }
-              }
+                  equals: session,
+                },
+              },
             ],
           },
           include: {
             expiry_time: true,
-            template: true
-          }
+            template: true,
+          },
         });
         const currentTime = moment()
           .tz(SERVER_TIMEZONE)
           .utc()
           .format("YYYY-MM-DDTHH:mm:ss[Z]");
+
         const expiryTime = pin.expiry_time.timeout_date.toISOString();
         const isCodeExpired = moment(currentTime).isBefore(expiryTime);
 
@@ -356,13 +339,15 @@ Expire in *${durationOfExpireTime}*`
         if (!result)
           throw new createErrors.NotImplemented("Verification failed");
 
-        return response(res, 202, {
+        return response(res, 202, "OTP Verified", {
           message: "OTP Verification success",
         });
       } catch (error) {
-        return response(res, error.status || 500, {
-          message: error.message || error,
-        });
+        return response(
+          res,
+          error.status || 500,
+          error.message || "Server error"
+        );
       }
     };
 

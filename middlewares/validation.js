@@ -13,9 +13,7 @@ const validate = validations => {
 
     if (errors.isEmpty()) return next()
 
-    return response(res, 400, {
-      message: errors.array({ onlyFirstError: true })[0]
-    })
+    return response(res, 400, errors.array({ onlyFirstError: true })[0]);
   }
 }
 
