@@ -16,8 +16,8 @@
     },
     "servers": [
         {
-            "url": "http://localhost:8069",
-            "description": "Current Server",
+            "url": "http://medsos03.zumnaa.id:2608",
+            "description": "Docker Development Server",
             "variables": {}
         },
         {

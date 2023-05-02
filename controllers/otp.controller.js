@@ -135,7 +135,7 @@ Expire in *${durationOfExpireTime}*`
           expires: maxAgeCookie + Date.now(),
           httpOnly: true,
           sameSite: "strict",
-          secure: NODE_ENV !== "development",
+          secure: false,
           signed: true,
         });
 
