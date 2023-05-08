@@ -1,13 +1,19 @@
 const response = require("../helpers/response");
 const createErrors = require("http-errors");
 require("dotenv").config();
-const { NODE_ENV, SERVER_TIMEZONE, TIMEOUT_DURATION } = process.env;
+const {
+  NODE_ENV,
+  SERVER_TIMEZONE,
+  TIMEOUT_DURATION,
+  JWT_SECRET_KEY,
+  JWT_TOKEN_LIFE,
+  JWT_ALGORITHM,
+} = process.env;
 const sendMail = require("../helpers/mailer");
 const registrationEmailTemplate = require("../templates/registration.template");
 const prisma = require("../config/prisma");
 const moment = require("moment");
 require("moment-timezone");
-const Duration = require('duration-js')
 const { random } = require('../helpers/randomize')
 const whatsapp = require('../config/whatsapp')
 
@@ -119,7 +125,16 @@ Expire in *${durationOfExpireTime}*`
             throw new createErrors.BadRequest("Verificaiton type invalid");
         }
 
+        const sessionOTP = {
+          session: session_id,
+        };
+        const token = jwt.sign(sessionOTP, JWT_SECRET_KEY, {
+          algorithm: JWT_ALGORITHM,
+          expiresIn: JWT_TOKEN_LIFE,
+        });
+
         result = {
+          token,
           type: result.type,
           template: result?.template?.message_code,
           detail: {
@@ -127,17 +142,6 @@ Expire in *${durationOfExpireTime}*`
             duration_of_expire: durationOfExpireTime
           },
         };
-
-        const maxAgeCookie = new Duration('1h');
-
-        res.cookie("session", session_id, {
-          maxAge: maxAgeCookie,
-          expires: maxAgeCookie + Date.now(),
-          httpOnly: true,
-          sameSite: "strict",
-          secure: NODE_ENV !== "development",
-          signed: true,
-        });
 
         return response(res, 201, "OTP Created", result);
       } catch (error) {
@@ -163,23 +167,7 @@ Expire in *${durationOfExpireTime}*`
       try {
         const data = req.body;
         let result = "";
-        const session = req.signedCookies?.session
-
-        if (!session) throw new createErrors.NotImplemented("Request session not found/expired, please request OTP");
-
-        const pin = await prisma.pin.findFirst({
-          where: {
-            session_id: session,
-          },
-          include: {
-            expiry_time: true,
-            template: true,
-          },
-        });
-
-        if (!pin)
-          throw new createErrors.NotAcceptable("Requested OTP was not found");
-
+        const pin = req.pin
         const expiryTime = moment
           .tz(SERVER_TIMEZONE)
           .utc()
@@ -276,13 +264,7 @@ Expire in *${durationOfExpireTime}*`
     const main = async () => {
       try {
         const data = req.body;
-        const session = req.signedCookies?.session;
-
-        if (!session)
-          throw new createErrors.NotImplemented(
-            "Request session not found/expired, please request OTP"
-          );
-
+        const session = req.pin.session
         const pin = await prisma.pin.findFirst({
           where: {
             AND: [
@@ -303,6 +285,12 @@ Expire in *${durationOfExpireTime}*`
             template: true,
           },
         });
+
+        if (!pin)
+          throw new createErrors.NotAcceptable(
+            "Verification code is not valid"
+          );
+
         const currentTime = moment()
           .tz(SERVER_TIMEZONE)
           .utc()
@@ -310,11 +298,6 @@ Expire in *${durationOfExpireTime}*`
 
         const expiryTime = pin.expiry_time.timeout_date.toISOString();
         const isCodeExpired = moment(currentTime).isBefore(expiryTime);
-
-        if (!pin)
-          throw new createErrors.NotAcceptable(
-            "Verification code is not valid"
-          );
 
         if (pin.is_used)
           throw new createErrors.NotAcceptable(

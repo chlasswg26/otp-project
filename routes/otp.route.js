@@ -6,6 +6,7 @@ const {
   verificationControllers, requestVerificationControllers, resentVerificationControllers,
 } = require('../controllers/otp.controller')
 const validate = require('../middlewares/validation')
+const { verifyToken } = require('../middlewares/verify')
 
 Route.post(
   "/request",
@@ -73,6 +74,7 @@ Route.post(
         .isEmail()
         .withMessage("E-mail bad format"),
     ]),
+    verifyToken,
     resentVerificationControllers
   )
   .post(
@@ -84,6 +86,7 @@ Route.post(
         .notEmpty()
         .withMessage("Verification code can't be empty"),
     ]),
+    verifyToken,
     verificationControllers
   );
 
