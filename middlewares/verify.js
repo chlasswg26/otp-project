@@ -20,9 +20,15 @@ module.exports = {
           { algorithms: JWT_ALGORITHM },
           async (err, result) => {
             if (err) {
-              return response(res, err.status || 412, {
-                message: err.message || err,
-              });
+              if (err.message === 'jwt expired') {
+                return response(res, err.status || 412, {
+                  message: 'OTP token expired',
+                })
+              } else {
+                return response(res, err.status || 412, {
+                  message: err.message || err,
+                });
+              }
             } else {
               const pin = await prisma.pin.findFirst({
                 where: {

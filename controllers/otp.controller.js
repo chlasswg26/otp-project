@@ -1,5 +1,6 @@
 const response = require("../helpers/response");
 const createErrors = require("http-errors");
+const jwt = require('jsonwebtoken')
 require("dotenv").config();
 const {
   NODE_ENV,
@@ -143,7 +144,7 @@ Expire in *${durationOfExpireTime}*`
           },
         };
 
-        return response(res, 201, "OTP Created", result);
+        return response(res, 200, "OTP Created", result);
       } catch (error) {
         return response(
           res,
@@ -241,7 +242,7 @@ Expire in *${durationOfExpireTime}*`
           },
         };
 
-        return response(res, 201, "OTP has been resent", result);
+        return response(res, 200, "OTP has been resent", result);
       } catch (error) {
         return response(
           res,
@@ -322,7 +323,7 @@ Expire in *${durationOfExpireTime}*`
         if (!result)
           throw new createErrors.NotImplemented("Verification failed");
 
-        return response(res, 202, "OTP Verified", {
+        return response(res, 200, "OTP Verified", {
           message: "OTP Verification success",
         });
       } catch (error) {

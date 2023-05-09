@@ -7,8 +7,8 @@ const favicon = require('serve-favicon')
 const app = express()
 const path = require('node:path')
 require('dotenv').config()
-const { NODE_ENV, PORT, COOKIE_SECRET_KEY, FRONTEND_URL } = process.env;
-const cookieParser = require("cookie-parser");
+const { NODE_ENV, PORT } = process.env;
+
 const qrcode = require("qrcode-terminal");
 const routesNavigator = require('./routes/all.route')
 const whatsapp = require('./config/whatsapp')
@@ -44,12 +44,10 @@ app.use(express.urlencoded({
   extended: true
 }))
 app.use(express.json())
-app.use(cookieParser(COOKIE_SECRET_KEY));
 app.use(cors({
-  origin: ['localhost', `http://localhost:${PORT}`, FRONTEND_URL],
+  origin: '*',
   allowedHeaders: ['Content-Type', 'Authorization'],
-  methods: ['GET', 'PUT', 'POST', 'DELETE'],
-  credentials: true,
+  methods: ['GET', 'PUT', 'POST', 'DELETE']
 }))
 app.use(morgan('dev'))
 
