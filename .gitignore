@@ -2,7 +2,9 @@ node_modules
 # Keep environment variables out of version control
 .env
 prisma/*
+public/.well-known/pki-validation/*
 !/prisma/schema.prisma
+!/public/.well-known/pki-validation/459247566CBDA2EBD96DD2DC238D28E8.txt
 yarn.lock
 package-lock.json
 .wwebjs_auth

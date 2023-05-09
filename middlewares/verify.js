@@ -57,9 +57,7 @@ module.exports = {
         );
       }
     } catch (error) {
-      return response(res, error.status || 500, {
-        message: error.message || error,
-      });
+      return response(res, error.status || 500, error.message || error);
     }
   },
 };
